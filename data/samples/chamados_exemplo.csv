@@ -1,0 +1,4 @@
+id,titulo,descricao,status,data_abertura,solucao
+INC-1001,Coletor desconecta durante a operação,"O coletor perde a conexão Wi-Fi algumas vezes durante o turno.",Resolvido,2026-01-12,"Canal Wi-Fi ajustado pela equipe de infraestrutura."
+INC-1002,Impressora não imprime etiquetas,"A impressora recebe o pedido, mas as etiquetas não saem.",Em andamento,2026-01-15,
+INC-1003,Acesso lento ao sistema,"O sistema demora para abrir para usuários da filial.",Resolvido,2026-01-20,"Latência da rede normalizada após manutenção."
