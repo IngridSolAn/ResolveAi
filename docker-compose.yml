@@ -30,13 +30,11 @@ services:
       - RESOLVEAI_API_URL=http://backend-ai:8000/analyze
     volumes:
       - glpi_app_data:/var/www/html
-      - ./glpi/plugins/resolveai:/var/www/html/plugins/resolveai
+      - ./glpi/plugins/resolveai:/var/www/html/glpi/plugins/resolveai
     restart: always
     depends_on:
       - db
       - backend-ai
-    depends_on:
-      - db
     networks:
       - resolveai-net
 

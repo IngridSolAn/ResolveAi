@@ -2,7 +2,7 @@
 
 define('PLUGIN_RESOLVEAI_VERSION', '0.1.0');
 define('PLUGIN_RESOLVEAI_MIN_GLPI_VERSION', '10.0.0');
-define('PLUGIN_RESOLVEAI_MAX_GLPI_VERSION', '11.0.0');
+define('PLUGIN_RESOLVEAI_MAX_GLPI_VERSION', '13.0.0');
 
 function plugin_init_resolveai(): void
 {
@@ -41,7 +41,7 @@ function plugin_resolveai_check_prerequisites(): bool
     }
 
     if (version_compare(GLPI_VERSION, PLUGIN_RESOLVEAI_MAX_GLPI_VERSION, '>=')) {
-        echo 'ResolveAI currently supports GLPI 10.x only.';
+        echo 'ResolveAI supports only GLPI versions below 13.0.0.';
         return false;
     }
 
