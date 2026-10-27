@@ -3,3 +3,6 @@
 __pycache__/
 .pytest_cache/
 *.py[cod]
+data/chroma/
+data/glpi_rag_state.json
+data/glpi_rag_state.json.tmp
