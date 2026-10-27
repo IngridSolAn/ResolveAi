@@ -1,8 +1,82 @@
+version: '3.8'
+
 services:
-  backend:
+  # --- BANCO DE DADOS DO GLPI ---
+  db:
+    image: mariadb:10.11
+    container_name: glpi-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_aqui
+      MYSQL_DATABASE: glpi
+      MYSQL_USER: glpi_user_aqui
+      MYSQL_PASSWORD: senha_user_aqui
+    volumes:
+      - glpi_db_data:/var/lib/mysql
+    restart: always
+    networks:
+      - resolveai-net
+
+  # --- APLICATIVO GLPI ---
+  glpi:
+    image: diouxx/glpi:latest
+    container_name: glpi-app
+    ports:
+      - "1201:80"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=glpi
+      - DB_USER=glpi_user_aqui
+      - DB_PASSWORD=senha_user_aqui
+      - RESOLVEAI_API_URL=http://backend-ai:8000/analyze
+    volumes:
+      - glpi_app_data:/var/www/html
+      - ./glpi/plugins/resolveai:/var/www/html/plugins/resolveai
+    restart: always
+    depends_on:
+      - db
+      - backend-ai
+    depends_on:
+      - db
+    networks:
+      - resolveai-net
+
+  # --- BACKEND DA IA ---
+  backend-ai:
     build:
       context: ./backend
-    env_file:
-      - .env
+      dockerfile: Dockerfile
+    container_name: resolveai-backend
     ports:
-      - "8000:8000"
+      - "8002:8000"
+    environment:
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+    depends_on:
+      - chromadb
+    restart: always
+    networks:
+      - resolveai-net
+
+  # --- BANCO VETORIAL CHROMADB (PARA A IA) ---
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb-app
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: always
+    networks:
+      - resolveai-net
+
+volumes:
+  glpi_db_data:
+  glpi_app_data:
+  chroma_data:
+
+networks:
+  resolveai-net:
+    driver: bridge

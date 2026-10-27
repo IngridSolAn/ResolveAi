@@ -1,4 +1,12 @@
 from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class TicketAnalysisRequest(BaseModel):
+    ticket_id: int
+    title: str
+    description: str
+
 
 app = FastAPI(
     title="ResolveAI",
