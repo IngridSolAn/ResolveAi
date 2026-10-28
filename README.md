@@ -4,6 +4,16 @@ O **ResolveAi** é uma solução inteligente baseada em Inteligência Artificial
 
 ---
 
+## 🔮 Visão de Futuro e Ecossistema Agnóstico
+
+O grande diferencial do **ResolveAi** é a sua arquitetura baseada em um **Cérebro Central Independente**. O motor de inferência em Python (FastAPI) e o banco vetorial (ChromaDB) funcionam de forma totalmente isolada das plataformas de chamados. 
+
+Embora o desenvolvimento e a primeira validação prática estejam sendo realizados nativamente com o **GLPI**, o ecossistema do **ResolveAi** foi projetado para ser agnóstico. No futuro, o sistema expandirá sua capacidade de integração para as principais ferramentas de gerenciamento de chamados (ITSM) do mercado mundial, necessitando apenas da adaptação da camada de API/Webhook:
+
+*   **Sistemas Open-Source:** Expansão planejada para ecossistemas modernos de atendimento como o **Zammad** e gerenciadores diretos como o **OSTicket**.
+*   **Plataformas Enterprise:** Integração futura com ferramentas líderes de mercado corporativo, como **Jira Service Management (Atlassian)**, **Freshservice** e **ServiceNow**.
+
+
 ## 🎯 Objetivo Principal
 
 O maior objetivo desta IA generativa é **reduzir drasticamente o tempo de resposta e o esforço humano no atendimento a chamados técnicos e operacionais**. 
