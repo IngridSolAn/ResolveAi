@@ -2,26 +2,27 @@
 
 Esta pasta será usada para documentação e arquivos específicos da integração.
 
-O esqueleto inicial do plugin GLPI 10 está em
-[`plugins/resolveai/`](plugins/resolveai/README.md). Ele exibe uma aba de
-insights no chamado e consulta o backend por um proxy PHP autenticado. O
-endpoint de análise ainda precisa ser implementado no backend ResolveAI antes
-que o plugin possa retornar diagnósticos.
+O plugin GLPI 10 está em [`plugins/resolveai/`](plugins/resolveai/README.md).
+Ele exibe um assistente flutuante para os analistas (expandido ao abrir um
+chamado) e consulta o backend por um proxy PHP
+autenticado, enviando título, descrição e a entidade (`entities_id`) do chamado
+como `tenant_id`. O backend usa a entidade para buscar casos parecidos somente
+dentro dela.
 
-A indexação histórica e incremental de chamados solucionados/fechados está em
-[`../src/glpi_rag.py`](../src/glpi_rag.py). Use uma conta MySQL somente leitura
-na réplica e mantenha `entities_id` como filtro obrigatório em todas as
-consultas vetoriais.
+A indexação histórica e incremental de chamados solucionados/fechados fica no
+conector [`backend/app/connectors/glpi.py`](../backend/app/connectors/glpi.py),
+o único módulo que conhece as tabelas do GLPI. Use uma conta MySQL somente
+leitura na réplica.
 
-Para habilitar as dependências opcionais, execute
-`pip install -r requirements-rag.txt`. Configure
-`GLPI_READONLY_DATABASE_URL` com uma URL SQLAlchemy MySQL/MariaDB da réplica e
-`CHROMA_PATH` com o diretório persistente do Chroma. Opcionalmente, configure
-`RAG_STATE_PATH`, `CHROMA_COLLECTION` e `RAG_SYNC_OVERLAP_SECONDS`. Em seguida,
-rode `python -m src.glpi_rag`. O primeiro ciclo usa uma data inicial antiga e
-indexa o histórico; os ciclos seguintes reconsultam a partir de `date_mod`
-salvo, com uma janela de sobreposição para capturar alterações próximas ao
-watermark. `upsert` por ID do chamado torna a reexecução idempotente.
+Dentro de `backend/`, instale `pip install -r requirements.txt`, configure
+`GLPI_READONLY_DATABASE_URL` com uma URL SQLAlchemy MySQL/MariaDB da réplica e,
+para o Chroma, `CHROMADB_HOST`/`CHROMADB_PORT` (servidor) ou `CHROMA_PATH`
+(diretório local). Opcionalmente, configure `RAG_STATE_PATH`,
+`CHROMA_COLLECTION` e `RAG_SYNC_OVERLAP_SECONDS`. Em seguida, rode
+`python -m app.index`. O primeiro ciclo usa uma data inicial antiga e indexa o
+histórico; os ciclos seguintes reconsultam a partir do `date_mod` salvo, com uma
+janela de sobreposição para capturar alterações próximas ao watermark. O
+`upsert` por ID (`glpi:<id do chamado>`) torna a reexecução idempotente.
 
 A consulta usa os status GLPI `5` (solucionado) e `6` (fechado), e relaciona
 soluções/acompanhamentos por `itemtype = 'Ticket'` e `items_id`. Confirme esses
@@ -32,10 +33,10 @@ acompanhamentos. Chamados sem solução não entram no RAG. O watermark depende 
 alterado; confirme esse comportamento na versão instalada. Caso contrário,
 inclua os timestamps das tabelas relacionadas na estratégia incremental.
 
-Exemplo de busca autorizada no código:
-`search_by_entity(collection, pergunta, entities_id=entidade_autorizada)`. A
-entidade deve vir do contexto de autorização do usuário, nunca de um filtro
-livre e não verificado do cliente.
+Toda busca vetorial filtra por `tenant_id`
+(`ChromaKnowledgeBase.search(pergunta, tenant_id, limite)`). A entidade vem do
+chamado que o usuário já tem permissão de ler (verificado pelo plugin), nunca
+de um filtro livre informado pelo cliente.
 
 ## Abordagem definida
 

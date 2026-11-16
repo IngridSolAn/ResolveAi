@@ -14,6 +14,10 @@ function resolveai_json_response(int $status, array $payload): void
 
 Session::checkLoginUser();
 
+if (Session::getCurrentInterface() !== 'central') {
+    resolveai_json_response(403, ['error' => 'ResolveAI is available only to technicians.']);
+}
+
 $ticketId = filter_input(INPUT_GET, 'ticket_id', FILTER_VALIDATE_INT);
 if (!$ticketId || $ticketId < 1) {
     resolveai_json_response(400, ['error' => 'A valid ticket_id is required.']);
@@ -63,6 +67,10 @@ $requestBody = json_encode([
     'ticket_id'   => (int) $ticketId,
     'title'       => $ticketTitle,
     'description' => $ticketDescription,
+    // Isola o RAG: só busca casos parecidos na mesma entidade do chamado.
+    'tenant_id'   => (int) $ticket->fields['entities_id'],
+    // "Analisar novamente" no assistente ignora o cache do backend.
+    'refresh'     => filter_input(INPUT_GET, 'refresh', FILTER_VALIDATE_BOOLEAN) === true,
 ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 
 if ($requestBody === false) {
@@ -79,6 +87,12 @@ if ($apiToken !== false && trim($apiToken) !== '') {
     $headers[] = 'Authorization: Bearer ' . trim($apiToken);
 }
 
+// A IA local (Ollama) pode levar alguns minutos em máquinas sem GPU.
+$apiTimeout = (int) getenv('RESOLVEAI_API_TIMEOUT');
+if ($apiTimeout < 10) {
+    $apiTimeout = 300;
+}
+
 $curl = curl_init($apiUrl);
 if ($curl === false) {
     error_log('[resolveai] Could not initialize the API request.');
@@ -91,7 +105,7 @@ $curlConfigured = curl_setopt_array($curl, [
     CURLOPT_HTTPHEADER     => $headers,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_CONNECTTIMEOUT => 5,
-    CURLOPT_TIMEOUT        => 20,
+    CURLOPT_TIMEOUT        => $apiTimeout,
     CURLOPT_FOLLOWLOCATION => false,
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,

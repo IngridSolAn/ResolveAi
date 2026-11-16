@@ -1,6 +1,6 @@
 <?php
 
-define('PLUGIN_RESOLVEAI_VERSION', '0.1.0');
+define('PLUGIN_RESOLVEAI_VERSION', '0.2.0');
 define('PLUGIN_RESOLVEAI_MIN_GLPI_VERSION', '10.0.0');
 define('PLUGIN_RESOLVEAI_MAX_GLPI_VERSION', '13.0.0');
 
@@ -9,12 +9,16 @@ function plugin_init_resolveai(): void
     global $PLUGIN_HOOKS;
 
     $PLUGIN_HOOKS['csrf_compliant']['resolveai'] = true;
-    $PLUGIN_HOOKS['add_javascript']['resolveai'] = 'js/resolveai.js';
-    $PLUGIN_HOOKS['add_css']['resolveai'] = 'css/resolveai.css';
 
-    Plugin::registerClass(PluginResolveaiTicket::class, [
-        'addtabon' => ['Ticket'],
-    ]);
+    // O assistente flutuante é só para analistas (interface "central"); quem
+    // abre chamados pela interface simplificada ("helpdesk") não o vê.
+    if (Session::getCurrentInterface() === 'central') {
+        // Os arquivos ficam em public/. No GLPI 11+, a URL /plugins/resolveai/js/...
+        // já aponta para public/js/...; no GLPI 10 é preciso incluir "public/".
+        $prefix = version_compare(GLPI_VERSION, '11.0.0', '>=') ? '' : 'public/';
+        $PLUGIN_HOOKS['add_javascript']['resolveai'] = $prefix . 'js/resolveai.js';
+        $PLUGIN_HOOKS['add_css']['resolveai'] = $prefix . 'css/resolveai.css';
+    }
 }
 
 function plugin_version_resolveai(): array

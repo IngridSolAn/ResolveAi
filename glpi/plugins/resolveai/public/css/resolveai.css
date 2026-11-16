@@ -1,0 +1,383 @@
+/* Assistente flutuante do ResolveAI */
+
+.resolveai-assistant {
+    --resolveai-primary: #2563eb;
+    --resolveai-accent: #14b8a6;
+    --resolveai-surface: var(--tblr-bg-surface, #ffffff);
+    --resolveai-surface-2: var(--tblr-bg-surface-secondary, #f1f5f9);
+    --resolveai-text: var(--tblr-body-color, #1e293b);
+    --resolveai-muted: var(--tblr-secondary, #64748b);
+    --resolveai-border: var(--tblr-border-color, #e2e8f0);
+
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+    font-family: inherit;
+    color: var(--resolveai-text);
+    pointer-events: none;
+}
+
+.resolveai-assistant > * {
+    pointer-events: auto;
+}
+
+/* --- Robô (botão) --- */
+
+.resolveai-launcher {
+    position: relative;
+    width: 112px;
+    height: 140px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.25));
+    transition: transform 0.2s ease;
+}
+
+.resolveai-launcher:hover,
+.resolveai-launcher:focus-visible {
+    transform: scale(1.06);
+}
+
+.resolveai-launcher:focus-visible {
+    outline: 3px solid var(--resolveai-primary);
+    outline-offset: 4px;
+    border-radius: 1rem;
+}
+
+.resolveai-robot {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.resolveai-robot-float {
+    animation: resolveai-float 3.2s ease-in-out infinite;
+}
+
+.resolveai-robot-wave {
+    transform-origin: 30px 92px;
+    animation: resolveai-wave 2.4s ease-in-out infinite;
+}
+
+.resolveai-robot-antenna {
+    animation: resolveai-blink 2.4s ease-in-out infinite;
+}
+
+.resolveai-tooltip {
+    position: absolute;
+    right: 100%;
+    bottom: 1.5rem;
+    margin-right: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.375rem;
+    background: #1e293b;
+    color: #ffffff;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    pointer-events: none;
+}
+
+.resolveai-launcher:hover .resolveai-tooltip,
+.resolveai-launcher:focus-visible .resolveai-tooltip {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Com o painel aberto, o robô fica menor ao lado do painel. */
+.resolveai-assistant[data-state="expanded"] .resolveai-launcher {
+    width: 64px;
+    height: 80px;
+}
+
+.resolveai-assistant[data-state="expanded"] .resolveai-tooltip {
+    display: none;
+}
+
+/* --- Painel --- */
+
+.resolveai-panel {
+    display: flex;
+    flex-direction: column;
+    width: min(460px, calc(100vw - 2.5rem));
+    max-height: min(72vh, 680px);
+    overflow: hidden;
+    border: 1px solid var(--resolveai-border);
+    border-radius: 1rem;
+    background: var(--resolveai-surface);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px) scale(0.96);
+    transform-origin: bottom right;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+}
+
+.resolveai-assistant[data-state="expanded"] .resolveai-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.resolveai-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: linear-gradient(135deg, var(--resolveai-primary), var(--resolveai-accent));
+    color: #ffffff;
+}
+
+.resolveai-avatar {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 50px;
+}
+
+.resolveai-avatar .resolveai-robot-float,
+.resolveai-avatar .resolveai-robot-wave,
+.resolveai-avatar .resolveai-robot-antenna {
+    animation: none;
+}
+
+.resolveai-titles {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.resolveai-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: inherit;
+}
+
+.resolveai-subtitle {
+    margin: 0;
+    font-size: 0.8125rem;
+    opacity: 0.9;
+}
+
+.resolveai-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.resolveai-icon-button {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.resolveai-icon-button:hover:not(:disabled),
+.resolveai-icon-button:focus-visible {
+    background: rgba(255, 255, 255, 0.32);
+}
+
+.resolveai-icon-button:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 1px;
+}
+
+.resolveai-icon-button:disabled {
+    opacity: 0.5;
+    cursor: progress;
+}
+
+.resolveai-panel-body {
+    padding: 1rem 1.1rem 1.1rem;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.resolveai-greeting {
+    margin: 0 0 0.35rem;
+    font-weight: 600;
+}
+
+.resolveai-muted {
+    margin: 0;
+    color: var(--resolveai-muted);
+}
+
+.resolveai-section + .resolveai-section {
+    margin-top: 1.1rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--resolveai-border);
+}
+
+.resolveai-section-title {
+    margin: 0 0 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--resolveai-muted);
+}
+
+.resolveai-text {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.resolveai-steps {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.resolveai-steps li + li {
+    margin-top: 0.35rem;
+}
+
+.resolveai-confidence {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+}
+
+.resolveai-confidence .resolveai-muted {
+    grid-column: 1 / -1;
+}
+
+.resolveai-percent {
+    font-size: 1.35rem;
+}
+
+.resolveai-bar {
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--resolveai-surface-2);
+}
+
+.resolveai-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+}
+
+.resolveai-tone-high { background: #16a34a; }
+.resolveai-tone-medium { background: #d97706; }
+.resolveai-tone-low { background: #dc2626; }
+.resolveai-tone-text-high { color: #15803d; }
+.resolveai-tone-text-medium { color: #b45309; }
+.resolveai-tone-text-low { color: #b91c1c; }
+
+.resolveai-disclaimer {
+    margin: 1rem 0 0;
+    font-size: 0.75rem;
+    color: var(--resolveai-muted);
+}
+
+.resolveai-error {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background: rgba(220, 38, 38, 0.08);
+    color: #b91c1c;
+}
+
+.resolveai-error p {
+    margin: 0 0 0.5rem;
+}
+
+.resolveai-loading {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.resolveai-skeleton {
+    display: block;
+    width: 100%;
+    height: 0.85rem;
+    border-radius: 0.25rem;
+    background: var(--resolveai-surface-2);
+    animation: resolveai-pulse 1.4s ease-in-out infinite;
+}
+
+.resolveai-skeleton-title {
+    width: 45%;
+    height: 1.1rem;
+}
+
+.resolveai-skeleton-short {
+    width: 70%;
+}
+
+.resolveai-elapsed {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--resolveai-muted);
+    text-align: right;
+}
+
+/* --- Animações --- */
+
+@keyframes resolveai-float {
+    50% { transform: translateY(-4px); }
+}
+
+@keyframes resolveai-wave {
+    0%, 60%, 100% { transform: rotate(0deg); }
+    15%, 45% { transform: rotate(14deg); }
+    30% { transform: rotate(-6deg); }
+}
+
+@keyframes resolveai-blink {
+    50% { opacity: 0.45; }
+}
+
+@keyframes resolveai-pulse {
+    50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .resolveai-robot-float,
+    .resolveai-robot-wave,
+    .resolveai-robot-antenna,
+    .resolveai-skeleton {
+        animation: none;
+    }
+
+    .resolveai-panel,
+    .resolveai-launcher,
+    .resolveai-tooltip {
+        transition: none;
+    }
+}
+
+@media (max-width: 576px) {
+    .resolveai-assistant {
+        right: 0.75rem;
+        bottom: 0.75rem;
+    }
+
+    .resolveai-launcher {
+        width: 64px;
+        height: 80px;
+    }
+}
+
+@media print {
+    .resolveai-assistant {
+        display: none;
+    }
+}

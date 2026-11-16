@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # --- BANCO DE DADOS DO GLPI ---
   db:
@@ -28,6 +26,8 @@ services:
       - DB_USER=glpi_user_aqui
       - DB_PASSWORD=senha_user_aqui
       - RESOLVEAI_API_URL=http://backend-ai:8000/analyze
+      - RESOLVEAI_API_TOKEN=${RESOLVEAI_API_TOKEN:-}
+      - RESOLVEAI_API_TIMEOUT=${RESOLVEAI_API_TIMEOUT:-300}
     volumes:
       - glpi_app_data:/var/www/html
       - ./glpi/plugins/resolveai:/var/www/html/glpi/plugins/resolveai
@@ -49,8 +49,21 @@ services:
     environment:
       - CHROMADB_HOST=chromadb
       - CHROMADB_PORT=8000
+      - RESOLVEAI_API_TOKEN=${RESOLVEAI_API_TOKEN:-}
+      # IA: ollama (gratuita, padrão) | claude (paga) | offline
+      - RESOLVEAI_LLM=${RESOLVEAI_LLM:-ollama}
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
+      - OLLAMA_TIMEOUT_SECONDS=${OLLAMA_TIMEOUT_SECONDS:-300}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-opus-5-5}
+      - CLAUDE_EFFORT=${CLAUDE_EFFORT:-medium}
+    volumes:
+      # Cache do modelo de embeddings do Chroma (~80 MB), baixado uma vez.
+      - backend_cache:/root/.cache
     depends_on:
       - chromadb
+      - ollama
     restart: always
     networks:
       - resolveai-net
@@ -70,10 +83,25 @@ services:
     networks:
       - resolveai-net
 
+  # --- IA LOCAL GRATUITA (OLLAMA) ---
+  # Baixe o modelo uma vez: docker compose exec ollama ollama pull qwen2.5:7b
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-app
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+    networks:
+      - resolveai-net
+
 volumes:
   glpi_db_data:
   glpi_app_data:
   chroma_data:
+  ollama_data:
+  backend_cache:
 
 networks:
   resolveai-net:
