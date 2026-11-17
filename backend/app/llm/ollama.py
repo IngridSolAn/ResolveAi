@@ -49,6 +49,8 @@ COMO USAR OS CASOS RECUPERADOS
 class OllamaAnalyzer:
     """`Analyzer` que chama a API local do Ollama com saída JSON estruturada."""
 
+    provider = "ollama"
+
     def __init__(
         self,
         host: str = "http://localhost:11434",

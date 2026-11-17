@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ResolveAI · IA generativa a serviço do suporte de TI</title>
+  <meta name="description" content="Como funciona o ResolveAI: um assistente de IA que lê o chamado, encontra casos parecidos já resolvidos e sugere diagnóstico e passos de teste dentro do GLPI.">
+  <meta property="og:title" content="ResolveAI · IA generativa a serviço do suporte de TI">
+  <meta property="og:description" content="RAG + IA generativa + GLPI: transformar o histórico de chamados em soluções acessíveis, consistentes e escaláveis.">
+  <meta property="og:image" content="img/assistente-expandido.png">
+  <link rel="icon" href="img/robo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="logo" href="#topo"><img src="img/robo.svg" alt="" width="28" height="34"> ResolveAI</a>
+      <nav aria-label="Seções">
+        <a href="#problema">O problema</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#rag">O que é RAG</a>
+        <a href="#confianca">Segurança</a>
+        <a href="#arquitetura">Arquitetura</a>
+        <a class="btn btn-small" href="https://github.com/IngridSolAn/ResolveAi">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo">
+    <!-- HERO -->
+    <section class="hero" id="topo">
+      <div class="wrap hero-inner">
+        <div class="hero-text">
+          <p class="eyebrow">Inteligência artificial + suporte de TI</p>
+          <h1>O histórico de chamados resolvidos, transformado em ajuda na hora certa.</h1>
+          <p class="lead">O <strong>ResolveAI</strong> lê o chamado que o analista acabou de abrir, encontra chamados parecidos que já foram resolvidos e sugere um <strong>diagnóstico</strong>, um <strong>nível de confiança</strong> e <strong>passos de teste</strong>, direto na tela do GLPI.</p>
+          <div class="cta">
+            <a class="btn" href="#como-funciona">Entender como funciona</a>
+            <a class="btn btn-ghost" href="https://github.com/IngridSolAn/ResolveAi">Ver o código</a>
+          </div>
+        </div>
+        <div class="hero-robot" aria-hidden="true">
+          <img src="img/robo.svg" alt="" width="220" height="275">
+        </div>
+      </div>
+    </section>
+
+    <!-- PROBLEMA -->
+    <section class="section" id="problema">
+      <div class="wrap">
+        <h2>O problema</h2>
+        <p class="section-lead">Equipes de suporte resolvem o mesmo tipo de problema muitas vezes, mas o conhecimento fica espalhado em chamados antigos.</p>
+        <div class="cards three">
+          <article class="card">
+            <h3>🔁 Chamados repetitivos</h3>
+            <p>Wi-Fi caindo, impressora travada, senha expirada… A solução muitas vezes já existe, registrada em um chamado de meses atrás.</p>
+          </article>
+          <article class="card">
+            <h3>⏳ Tempo procurando</h3>
+            <p>Encontrar o caso certo exige busca manual por palavras-chave, que falha quando cada pessoa descreve o problema de um jeito.</p>
+          </article>
+          <article class="card">
+            <h3>🧠 Conhecimento que se perde</h3>
+            <p>Quando quem resolveu sai da equipe, a experiência vai junto. O histórico existe, mas não é aproveitado.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section class="section alt" id="como-funciona">
+      <div class="wrap">
+        <h2>Como a IA funciona, passo a passo</h2>
+        <p class="section-lead">O ResolveAI combina <strong>busca por significado</strong> no histórico com uma <strong>IA generativa</strong> que escreve a sugestão. A decisão continua sempre com o analista.</p>
+
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num" aria-hidden="true">1</span>
+            <div>
+              <h3>Aprende com o que já foi resolvido</h3>
+              <p>Periodicamente, o ResolveAI lê os chamados <strong>solucionados ou fechados</strong> do GLPI (com as soluções e os acompanhamentos), limpa o texto (HTML, assinaturas de e-mail) e guarda cada caso numa <strong>base vetorial</strong> (ChromaDB). Ele só lê o banco, numa conta somente leitura.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num" aria-hidden="true">2</span>
+            <div>
+              <h3>O analista abre um chamado</h3>
+              <p>No GLPI, o robô do ResolveAI fica no canto da tela. Ao abrir um chamado, ele se expande e pede a análise. O plugin confere antes se a pessoa está logada, se é analista e se tem permissão para ler aquele chamado.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num" aria-hidden="true">3</span>
+            <div>
+              <h3>Busca casos parecidos (RAG)</h3>
+              <p>O título e a descrição viram um "vetor de significado", e a base devolve os chamados resolvidos mais próximos, <strong>sempre dentro da mesma entidade</strong> do chamado. Casos pouco parecidos são descartados por um limite de distância, para não confundir a IA.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num" aria-hidden="true">4</span>
+            <div>
+              <h3>A IA escreve a sugestão, com regras</h3>
+              <p>A IA recebe o chamado e os casos relevantes, com instruções rígidas: usar apenas os fatos fornecidos, separar evidência de hipótese, citar o número dos casos usados, sugerir só testes seguros e declarar quando não há histórico semelhante. A resposta sai em <strong>JSON validado</strong>, sempre no mesmo formato.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num" aria-hidden="true">5</span>
+            <div>
+              <h3>O analista valida e avalia</h3>
+              <p>O painel mostra o diagnóstico, a confiança numa barra colorida e os passos de teste. O analista decide o que fazer e pode marcar <strong>👍 Ajudou</strong> ou <strong>👎 Não ajudou</strong>. Essa avaliação alimenta o painel de acompanhamento da IA.</p>
+            </div>
+          </li>
+        </ol>
+
+        <figure class="shot">
+          <img src="img/assistente-expandido.png" alt="Assistente ResolveAI expandido ao lado de um chamado, mostrando diagnóstico citando o chamado número 1, confiança de 65% e três passos de teste." loading="lazy" width="1280" height="880">
+          <figcaption>Análise real gerada pelo modelo gratuito <code>qwen2.5:7b</code> para um chamado de teste ("coletores caindo da rede no galpão novo"). A IA encontrou o chamado #1, que teve o mesmo sintoma, e sugeriu verificar interferência entre access points.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- RAG -->
+    <section class="section" id="rag">
+      <div class="wrap two-col">
+        <div>
+          <h2>O que é RAG, em linguagem simples</h2>
+          <p><strong>RAG</strong> (<em>Retrieval-Augmented Generation</em>, ou "geração aumentada por recuperação") é um jeito de fazer a IA <strong>consultar o arquivo antes de responder</strong>.</p>
+          <p>Sem RAG, um modelo de IA responde só com o que aprendeu no treinamento. Ele não conhece a sua rede, os seus sistemas nem os problemas que a sua equipe já resolveu, e pode "inventar" uma resposta plausível.</p>
+          <p>Com RAG, antes de escrever, a IA recebe os trechos mais relevantes da sua própria base. É como um técnico experiente que, antes de opinar, abre os chamados antigos parecidos e diz: <em>"já vimos isso no chamado #1, foi interferência entre access points; vale conferir o canal"</em>.</p>
+        </div>
+        <div class="card compare">
+          <div>
+            <h3>Busca por palavra-chave</h3>
+            <p>"coletor <strong>cai</strong> da rede" não encontra "coletor <strong>perde a conexão Wi-Fi</strong>".</p>
+          </div>
+          <div>
+            <h3>Busca por significado</h3>
+            <p>Os dois textos ficam próximos no "espaço de significado", e o caso antigo é encontrado mesmo com palavras diferentes.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESPOSTA -->
+    <section class="section alt">
+      <div class="wrap">
+        <h2>O que vem em cada resposta</h2>
+        <div class="cards three">
+          <article class="card">
+            <h3>Diagnóstico e evidências</h3>
+            <p>O que os fatos indicam, separando evidência de hipótese e citando os chamados do histórico que embasam a sugestão.</p>
+          </article>
+          <article class="card">
+            <h3>Nível de confiança</h3>
+            <p>Um número de 0 a 100 com justificativa. Ele cai quando faltam dados ou não há caso parecido, e a IA é orientada a não "inflar" a confiança.</p>
+          </article>
+          <article class="card">
+            <h3>Passos de teste</h3>
+            <p>Verificações numeradas, objetivas e de baixo risco. Sem comandos destrutivos e sem afirmar que algo já foi testado.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIANÇA -->
+    <section class="section" id="confianca">
+      <div class="wrap">
+        <h2>Segurança, privacidade e confiança</h2>
+        <p class="section-lead">IA em suporte de TI lida com dados de clientes e de infraestrutura. Estes cuidados fazem parte do projeto desde o começo:</p>
+        <ul class="checks">
+          <li><strong>A IA sugere, não decide.</strong> O ResolveAI não altera, responde nem fecha chamados.</li>
+          <li><strong>Isolamento por entidade.</strong> A busca de casos parecidos nunca mistura clientes ou entidades diferentes.</li>
+          <li><strong>Só para analistas.</strong> Usuários que abrem chamados não veem o assistente; o servidor também recusa o acesso.</li>
+          <li><strong>Menos "alucinação".</strong> A IA só pode afirmar o que está no chamado ou nos casos recuperados, e deve dizer quando não sabe.</li>
+          <li><strong>Proteção contra prompt injection.</strong> O texto dos chamados é tratado como dado, nunca como instrução para a IA.</li>
+          <li><strong>Privacidade na telemetria.</strong> O painel guarda só números (tempo, confiança, uso do histórico, avaliações), nunca o texto dos chamados.</li>
+          <li><strong>Dados na sua rede.</strong> Com a IA local (Ollama), nada sai da sua infraestrutura.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ESCOLHA DA IA -->
+    <section class="section alt" id="ia">
+      <div class="wrap">
+        <h2>IA gratuita por padrão, paga se você quiser</h2>
+        <div class="cards three">
+          <article class="card">
+            <p class="tag">Padrão · gratuito</p>
+            <h3>Ollama (local)</h3>
+            <p>Modelos abertos, como o <code>qwen2.5:7b</code>, rodando no seu servidor. Sem custo por uso e sem enviar dados para fora. Com GPU responde em segundos; só no processador, em 1 a 2 minutos.</p>
+          </article>
+          <article class="card">
+            <p class="tag">Opcional · pago por uso</p>
+            <h3>Claude (Anthropic)</h3>
+            <p>Para quem quer mais qualidade e respostas rápidas. Basta trocar uma variável de configuração e informar a chave da API.</p>
+          </article>
+          <article class="card">
+            <p class="tag">Testes</p>
+            <h3>Modo sem IA</h3>
+            <p>Só lista os chamados parecidos encontrados. Útil para validar a integração com o GLPI antes de ligar a IA.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAINEL -->
+    <section class="section" id="painel">
+      <div class="wrap">
+        <h2>Acompanhando o comportamento da IA</h2>
+        <p class="section-lead">Dentro do próprio GLPI, em <strong>Ferramentas → Painel da IA</strong>, quem é Super-Admin acompanha se a IA está ajudando de verdade, sem senha extra:</p>
+        <ul class="pills">
+          <li>Volume de análises por dia</li>
+          <li>Tempo de resposta (mediana e p95)</li>
+          <li>Distribuição da confiança</li>
+          <li>Quanto o histórico é usado e citado</li>
+          <li>Avaliações "ajudou / não ajudou"</li>
+          <li>Erros e respostas do cache</li>
+        </ul>
+        <figure class="shot">
+          <img src="img/painel-admin.png" alt="Painel da IA com indicadores, gráfico de análises por dia, tempo de resposta, distribuição da confiança e medidores de uso do histórico." loading="lazy" width="1400" height="1090">
+          <figcaption>Pré-visualização do Painel da IA com <strong>dados de demonstração</strong>. O acesso usa o login e as permissões do GLPI: só o perfil Super-Admin vê o painel.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ARQUITETURA -->
+    <section class="section alt" id="arquitetura">
+      <div class="wrap">
+        <h2>Arquitetura agnóstica</h2>
+        <p class="section-lead">O "cérebro" do ResolveAI não depende do GLPI. Ele conversa com qualquer ferramenta de chamados por meio de <strong>conectores</strong>; o GLPI é só a primeira integração.</p>
+        <div class="arch" role="img" aria-label="Diagrama: plataformas de chamados se ligam por conectores ao núcleo do ResolveAI, que usa a base vetorial e a IA.">
+          <div class="arch-col">
+            <p class="arch-title">Plataformas</p>
+            <span class="box">GLPI</span>
+            <span class="box dashed">Zammad · osTicket</span>
+            <span class="box dashed">Jira SM · Freshservice · ServiceNow</span>
+          </div>
+          <span class="arrow" aria-hidden="true">→</span>
+          <div class="arch-col">
+            <p class="arch-title">Conectores</p>
+            <span class="box">Conector GLPI</span>
+            <span class="box dashed">Novos conectores</span>
+          </div>
+          <span class="arrow" aria-hidden="true">→</span>
+          <div class="arch-col core">
+            <p class="arch-title">Núcleo ResolveAI</p>
+            <span class="box strong">Modelos neutros</span>
+            <span class="box strong">Busca + análise</span>
+            <span class="box strong">Telemetria + painel</span>
+          </div>
+          <span class="arrow" aria-hidden="true">↔</span>
+          <div class="arch-col">
+            <p class="arch-title">Adaptadores</p>
+            <span class="box">ChromaDB (RAG)</span>
+            <span class="box">Ollama · Claude</span>
+          </div>
+        </div>
+        <p class="note">Linhas tracejadas: integrações planejadas.</p>
+      </div>
+    </section>
+
+    <!-- TECNOLOGIAS -->
+    <section class="section" id="tecnologias">
+      <div class="wrap">
+        <h2>Tecnologias</h2>
+        <ul class="pills">
+          <li>Python</li><li>FastAPI</li><li>Pydantic</li><li>ChromaDB</li><li>Ollama</li><li>Claude (Anthropic)</li>
+          <li>GLPI (plugin PHP + JavaScript)</li><li>SQLAlchemy</li><li>SQLite</li><li>Docker Compose</li>
+        </ul>
+        <h2 class="mt">Próximos passos</h2>
+        <ul class="checks soft">
+          <li>Busca semântica com modelo multilíngue, otimizado para português.</li>
+          <li>Conector pela API REST oficial do GLPI.</li>
+          <li>Indexar também artigos da base de conhecimento e documentações técnicas.</li>
+          <li>Novos conectores: Zammad, osTicket, Jira Service Management, Freshservice e ServiceNow.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- IDEALIZADORA -->
+    <section class="section quote-section" id="idealizadora">
+      <div class="wrap">
+        <div class="author">
+          <div class="author-photo">
+            <img src="img/ingrid.jpg" alt="Foto de Ingrid Sol An, idealizadora do ResolveAI" width="400" height="400" loading="lazy">
+          </div>
+          <div class="author-text">
+            <p class="eyebrow">Idealizadora do projeto</p>
+            <h2>Ingrid Sol An</h2>
+            <p class="author-role">Idealização e desenvolvimento do ResolveAI</p>
+            <blockquote>
+              <p>"O futuro do suporte não está apenas em responder chamados mais rapidamente, mas em transformar conhecimento técnico em soluções acessíveis, consistentes e escaláveis."</p>
+            </blockquote>
+            <div class="cta">
+              <a class="btn btn-linkedin" href="https://www.linkedin.com/in/ingridsolan" rel="noopener" target="_blank">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z"/></svg>
+                Conectar no LinkedIn<span class="visually-hidden"> (abre em nova aba)</span>
+              </a>
+              <a class="btn btn-ghost" href="https://github.com/IngridSolAn/ResolveAi">Ver o projeto no GitHub</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>ResolveAI · idealizado e desenvolvido por <a href="https://www.linkedin.com/in/ingridsolan" rel="noopener">Ingrid Sol An</a> · projeto de estudo e aplicação de IA generativa, engenharia de software e integração de sistemas no suporte de TI.</p>
+    </div>
+  </footer>
+</body>
+</html>

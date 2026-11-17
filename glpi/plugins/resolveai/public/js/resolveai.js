@@ -281,9 +281,68 @@
             body.replaceChildren(
                 section('Diagnóstico e evidências', diagnosis),
                 section('Nível de confiança', meter),
-                section('Passos sugeridos de teste', payload.passos_sugeridos_de_teste),
+                section('Passos sugeridos de teste', payload.passos_sugeridos_de_teste)
+            );
+            if (typeof payload.analysis_id === 'string' && payload.analysis_id) {
+                body.appendChild(buildFeedback(payload.analysis_id));
+            }
+            body.appendChild(
                 el('p', 'resolveai-disclaimer', 'Sugestão gerada por IA. Valide antes de aplicar.')
             );
+        }
+
+        /** "Esta sugestão ajudou?" — alimenta o painel de administradores. */
+        function buildFeedback(analysisId) {
+            const box = el('div', 'resolveai-feedback');
+            const question = el('span', 'resolveai-feedback-question', 'Esta sugestão ajudou?');
+            const buttons = el('div', 'resolveai-feedback-buttons');
+            const status = el('span', 'resolveai-feedback-status');
+            status.setAttribute('role', 'status');
+
+            function option(label, helpful) {
+                const button = el('button', 'resolveai-feedback-button', label);
+                button.type = 'button';
+                button.setAttribute('aria-pressed', 'false');
+                button.addEventListener('click', function () {
+                    sendFeedback(helpful, button);
+                });
+                return button;
+            }
+            const yes = option('👍 Ajudou', true);
+            const no = option('👎 Não ajudou', false);
+            buttons.append(yes, no);
+            box.append(question, buttons, status);
+
+            async function sendFeedback(helpful, button) {
+                yes.disabled = true;
+                no.disabled = true;
+                status.textContent = 'Enviando…';
+                const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+                // GLPI 10 valida POST com token CSRF; no GLPI 11+ isso é ignorado.
+                if (typeof window.getAjaxCsrfToken === 'function') {
+                    headers['X-Glpi-Csrf-Token'] = window.getAjaxCsrfToken();
+                }
+                try {
+                    const response = await fetch(pluginBaseUrl() + '/front/feedback.php', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: headers,
+                        body: JSON.stringify({ analysis_id: analysisId, helpful: helpful }),
+                    });
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    yes.setAttribute('aria-pressed', String(helpful));
+                    no.setAttribute('aria-pressed', String(!helpful));
+                    button.classList.add('is-selected');
+                    status.textContent = 'Obrigado! Sua avaliação ajuda a melhorar o ResolveAI.';
+                } catch (error) {
+                    status.textContent = 'Não foi possível enviar a avaliação. Tente de novo.';
+                    yes.disabled = false;
+                    no.disabled = false;
+                }
+            }
+            return box;
         }
 
         function renderError(message) {

@@ -58,7 +58,18 @@ can return analysis.
   (robot SVG, panel, loading, result, "Analisar novamente" which sends
   `refresh=1`). Static files must live in `public/`: GLPI 11+ only serves
   plugin assets from there (URL `/plugins/resolveai/js/...`).
-- `front/insights.php`: authenticated proxy that checks ticket read access.
+- `front/insights.php`: authenticated proxy that checks ticket read access and
+  returns the analysis plus its `analysis_id`.
+- `front/feedback.php`: receives the technician's 👍/👎 (`POST {analysis_id,
+  helpful}`) and forwards it to the backend `/feedback` (same host as
+  `RESOLVEAI_API_URL`).
+- `inc/backend.php`: shared helpers (technician check, server-to-server POST,
+  admin GET with `RESOLVEAI_ADMIN_TOKEN`).
+- `inc/dashboard.class.php`, `front/painel.php`, `front/admin.php`,
+  `public/js/painel.js`, `public/css/painel.css`: **Painel da IA** under
+  *Tools* (Ferramentas), visible only to Super-Admin (`config` UPDATE right).
+  `admin.php` re-checks the right and reads the backend `/admin/*` telemetry
+  server-to-server; the admin token never reaches the browser.
 
 ## Security notes
 

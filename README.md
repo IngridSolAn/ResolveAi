@@ -2,6 +2,8 @@
 
 **IA generativa a serviço do suporte de TI.** O ResolveAI lê o chamado que o analista acabou de abrir, encontra chamados parecidos que já foram resolvidos e sugere um diagnóstico, um nível de confiança e passos de teste, direto na tela do GLPI.
 
+🌐 **Entenda como a IA funciona, passo a passo:** [ingridsolan.github.io/ResolveAi](https://ingridsolan.github.io/ResolveAi/)
+
 ![Assistente ResolveAI expandido em um chamado do GLPI](docs/img/assistente-expandido.png)
 
 <sub>Análise real gerada pelo modelo gratuito `qwen2.5:7b` (Ollama) para o chamado de teste #7, a partir do histórico de exemplo em [`glpi/samples/chamados_teste.sql`](glpi/samples/chamados_teste.sql). O print foi feito numa página de pré-visualização com o mesmo CSS e JavaScript do plugin.</sub>
@@ -34,6 +36,8 @@ O ResolveAI usa **RAG (Retrieval-Augmented Generation)** para transformar esse h
 - **Isolamento por entidade.** A busca de casos parecidos nunca sai da entidade do chamado analisado, o que importa em ambientes com vários clientes.
 - **Só para analistas.** Usuários da interface simplificada, os que abrem chamados, não veem o assistente.
 - **Cache de análises.** Reabrir um chamado sem alterações mostra o resultado na hora.
+- **Avaliação dos analistas.** Botões 👍 *Ajudou* / 👎 *Não ajudou* em cada sugestão.
+- **Painel da IA dentro do GLPI (só Super-Admin).** Em *Ferramentas → Painel da IA*: volume, tempo de resposta, confiança, uso do histórico, avaliações e erros, sem guardar o texto dos chamados.
 - **Arquitetura agnóstica.** O núcleo não conhece o GLPI; outras ferramentas de chamados entram como novos conectores.
 
 | Minimizado (qualquer página) | Expandido (ao abrir um chamado) |
@@ -104,7 +108,8 @@ flowchart LR
 | `connectors/glpi.py` | O único módulo que conhece as tabelas do GLPI. Lê soluções e acompanhamentos e limpa HTML e assinaturas de e-mail. |
 | `knowledge/chroma.py` | Base vetorial no ChromaDB, sempre filtrada por `tenant_id`. |
 | `llm/` | Analisadores substituíveis: `ollama.py` (gratuito), `claude.py` (pago) e `offline.py` (sem IA). |
-| `main.py` | API HTTP (`/health`, `/analyze`), autenticação por token e cache de análises. |
+| `core/telemetry.py` + `telemetry/sqlite.py` | Registro do comportamento da IA e das avaliações (SQLite), usado pelo painel. |
+| `main.py` | API HTTP (`/analyze`, `/feedback`, `/admin/*`), autenticação por token e cache de análises. |
 
 ---
 
@@ -192,6 +197,40 @@ Abra um chamado no GLPI (no exemplo, o chamado aberto *"Coletores caindo da rede
 
 ---
 
+## 📊 Painel da IA (Super-Admin do GLPI)
+
+![Painel da IA dentro do GLPI, com dados de demonstração](docs/img/painel-admin.png)
+
+<sub>Pré-visualização com dados de demonstração.</sub>
+
+O painel mostra se a IA está ajudando de verdade:
+- volume de análises por dia;
+- tempo de resposta (mediana e p95);
+- distribuição da confiança;
+- quanto o histórico é usado e citado;
+- avaliações dos analistas, respostas do cache e erros.
+
+**Como acessar:** entre no GLPI com um perfil **Super-Admin** e abra **Ferramentas → Painel da IA**. Não é preciso digitar senha nem token: o acesso usa o login e as permissões do próprio GLPI. Outros perfis não veem o item no menu, e a página e os dados são recusados para eles.
+
+**Como funciona por baixo:**
+1. A página do plugin pede os dados ao `front/admin.php`, que confere de novo se o usuário é Super-Admin (direito de alterar a configuração do GLPI).
+2. O `admin.php` consulta o backend (`/admin/*`), servidor a servidor, com o `RESOLVEAI_ADMIN_TOKEN`. Esse token fica só nas variáveis de ambiente do GLPI e do backend e nunca chega ao navegador.
+
+**Configuração (uma vez):** gere um token e coloque-o no `.env`. O `docker-compose.yml` entrega o mesmo valor ao GLPI e ao backend.
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+# RESOLVEAI_ADMIN_TOKEN=<valor gerado>
+docker compose up -d backend-ai glpi
+```
+
+Depois, saia e entre de novo no GLPI para o item aparecer no menu.
+
+- **Painel desativado sem token:** se `RESOLVEAI_ADMIN_TOKEN` não estiver definido, o painel mostra um aviso de configuração.
+- **Onde os dados ficam:** a telemetria é gravada num SQLite (`TELEMETRY_DB_PATH`), no volume `backend_data`, e guarda só metadados: IDs, tempos, confiança, contagem de casos e avaliações.
+
+---
+
 ## 🛠️ Desenvolvimento local (sem Docker)
 
 ```bash
@@ -238,6 +277,8 @@ Todas as opções estão comentadas no [`.env.example`](.env.example). As princi
 | `ANTHROPIC_API_KEY` | — | Chave da Anthropic (só para `claude`). |
 | `CLAUDE_MODEL` / `CLAUDE_EFFORT` | `claude-opus-5-5` / `medium` | Modelo e nível de esforço do Claude. |
 | `RESOLVEAI_API_TOKEN` | — | Se definido, o backend exige `Authorization: Bearer <token>`. O plugin envia o mesmo valor. |
+| `RESOLVEAI_ADMIN_TOKEN` | — | Token interno entre o GLPI e o backend para o Painel da IA (ninguém o digita). Sem ele, o painel fica desativado. |
+| `TELEMETRY_DB_PATH` | `data/telemetry.db` | Arquivo SQLite da telemetria do painel. |
 | `RESOLVEAI_API_TIMEOUT` | `300` | Quanto tempo o plugin espera pela análise. |
 | `RAG_LIMIT` | `5` | Quantos casos parecidos buscar. |
 | `RAG_MAX_DISTANCE` | `0.5` | Distância máxima (cosseno) para um caso ser enviado à IA. Casos pouco parecidos confundem modelos menores. |
@@ -252,6 +293,7 @@ Todas as opções estão comentadas no [`.env.example`](.env.example). As princi
 - **Proxy no servidor.** O navegador nunca fala com o backend: o plugin PHP valida a sessão, o perfil de analista e a permissão de leitura do chamado, e só então chama a API.
 - **Isolamento por entidade.** O `entities_id` do chamado é enviado como `tenant_id`, e a busca vetorial sempre filtra por ele.
 - **Conteúdo não confiável.** O prompt trata o texto dos chamados como dado, não como instrução, o que reduz o risco de prompt injection. O plugin insere o conteúdo na página apenas como texto.
+- **Telemetria sem conteúdo.** O painel registra só números e IDs, nunca o texto dos chamados ou das respostas.
 - **Com o Ollama, nada sai da rede.** Com o Claude, o conteúdo do chamado e dos casos parecidos é enviado à API da Anthropic.
 
 ---
@@ -259,7 +301,7 @@ Todas as opções estão comentadas no [`.env.example`](.env.example). As princi
 ## 🧪 Testes
 
 ```bash
-cd backend && pytest     # núcleo, conector GLPI, IA, cache e API
+cd backend && pytest     # núcleo, conector GLPI, IA, cache, telemetria e API
 pytest tests/            # protótipo Streamlit (a partir da raiz)
 ```
 
@@ -276,13 +318,14 @@ Os testes não chamam nenhuma IA real nem precisam de GLPI, ChromaDB ou Ollama r
 │   ├── app/knowledge/        #   base vetorial (ChromaDB)
 │   ├── app/llm/              #   IA: Ollama, Claude e modo sem IA
 │   ├── app/prompts.py        #   prompt do sistema e schema da resposta
-│   ├── app/main.py           #   endpoints /health e /analyze
+│   ├── app/telemetry/        #   telemetria em SQLite (painel)
+│   ├── app/main.py           #   endpoints /analyze, /feedback e /admin/*
 │   ├── app/index.py          #   indexação incremental do histórico
 │   └── tests/
 ├── glpi/
-│   ├── plugins/resolveai/    # Plugin GLPI: assistente flutuante + proxy PHP
+│   ├── plugins/resolveai/    # Plugin GLPI: assistente flutuante, Painel da IA e proxy PHP
 │   └── samples/              # Chamados de exemplo para demonstração
-├── docs/img/                 # Imagens deste README
+├── docs/                     # Página pública (GitHub Pages) e imagens deste README
 ├── src/ + app.py + tests/    # Protótipo local em Streamlit
 ├── docker-compose.yml        # GLPI + MariaDB + backend + ChromaDB + Ollama
 └── .env.example              # Modelo de configuração
@@ -312,8 +355,8 @@ Os testes não chamam nenhuma IA real nem precisam de GLPI, ChromaDB ou Ollama r
 
 ---
 
-## ✒️ Autora
+## ✒️ Idealizadora
 
-**Ingrid Sol An**, idealização e desenvolvimento ([@IngridSolAn](https://github.com/IngridSolAn)).
+**Ingrid Sol An**, idealizadora e desenvolvedora do projeto · [LinkedIn](https://www.linkedin.com/in/ingridsolan) · [GitHub](https://github.com/IngridSolAn)
 
 > *"O futuro do suporte não está apenas em responder chamados mais rapidamente, mas em transformar conhecimento técnico em soluções acessíveis, consistentes e escaláveis."*

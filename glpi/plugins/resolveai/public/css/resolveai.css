@@ -381,3 +381,67 @@
         display: none;
     }
 }
+
+/* --- Avaliação da sugestão --- */
+
+.resolveai-feedback {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-top: 1.1rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: var(--resolveai-surface-2);
+}
+
+.resolveai-feedback-question {
+    font-weight: 600;
+}
+
+.resolveai-feedback-buttons {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.resolveai-feedback-button {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--resolveai-border);
+    border-radius: 999px;
+    background: var(--resolveai-surface);
+    color: var(--resolveai-text);
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+
+.resolveai-feedback-button:hover:not(:disabled),
+.resolveai-feedback-button:focus-visible {
+    border-color: var(--resolveai-primary);
+}
+
+.resolveai-feedback-button:focus-visible {
+    outline: 2px solid var(--resolveai-primary);
+    outline-offset: 1px;
+}
+
+.resolveai-feedback-button:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.resolveai-feedback-button.is-selected {
+    border-color: var(--resolveai-primary);
+    color: var(--resolveai-primary);
+    font-weight: 600;
+    opacity: 1;
+}
+
+.resolveai-feedback-status {
+    flex-basis: 100%;
+    font-size: 0.75rem;
+    color: var(--resolveai-muted);
+}
+
+.resolveai-feedback-status:empty {
+    display: none;
+}

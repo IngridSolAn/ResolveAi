@@ -5,15 +5,69 @@ from __future__ import annotations
 import json
 import logging
 import os
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from app.core.models import AnalysisResult, Ticket
+from app.core.models import AnalysisResult, SimilarCase, Ticket
 from app.core.ports import Analyzer, KnowledgeBase, TicketSource
 
 LOGGER = logging.getLogger("resolveai.core")
 INITIAL_WATERMARK = "1970-01-01 00:00:00"
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+@dataclass
+class AnalysisOutcome:
+    """Resultado da análise mais o que aconteceu no RAG (para a telemetria)."""
+
+    result: AnalysisResult
+    retrieved: list[SimilarCase] = field(default_factory=list)
+    used: list[SimilarCase] = field(default_factory=list)
+
+    @property
+    def best_distance(self) -> float | None:
+        distances = [case.distance for case in self.retrieved if case.distance is not None]
+        return min(distances) if distances else None
+
+    @property
+    def cited(self) -> list[SimilarCase]:
+        """Casos enviados à IA que ela citou pelo ID no diagnóstico."""
+        text = self.result.diagnostico_e_evidencias
+        return [case for case in self.used if f"#{case.id}" in text]
+
+
+def run_analysis(
+    ticket: Ticket,
+    knowledge_base: KnowledgeBase | None,
+    analyzer: Analyzer,
+    limit: int = 5,
+    max_distance: float | None = None,
+) -> AnalysisOutcome:
+    """Recupera casos parecidos (RAG) e pede o diagnóstico ao analisador.
+
+    `max_distance` descarta casos pouco parecidos antes de enviá-los à IA:
+    casos irrelevantes no contexto confundem principalmente modelos menores.
+    """
+    retrieved: list[SimilarCase] = []
+    query = f"{ticket.title}\n{ticket.description}".strip()
+    if knowledge_base is not None and ticket.tenant_id and query:
+        try:
+            retrieved = knowledge_base.search(query, ticket.tenant_id, limit)
+        except Exception:
+            # Sem histórico a análise continua: o prompt já orienta o modelo a
+            # declarar que não encontrou casos semelhantes.
+            LOGGER.exception("Falha ao consultar a base de conhecimento.")
+    used = retrieved
+    if max_distance is not None:
+        used = [
+            case
+            for case in retrieved
+            if case.distance is None or case.distance <= max_distance
+        ]
+    return AnalysisOutcome(
+        result=analyzer.analyze(ticket, used), retrieved=retrieved, used=used
+    )
 
 
 def analyze_ticket(
@@ -23,27 +77,8 @@ def analyze_ticket(
     limit: int = 5,
     max_distance: float | None = None,
 ) -> AnalysisResult:
-    """Recupera casos parecidos (RAG) e pede o diagnóstico ao analisador.
-
-    `max_distance` descarta casos pouco parecidos antes de enviá-los à IA:
-    casos irrelevantes no contexto confundem principalmente modelos menores.
-    """
-    similar_cases = []
-    query = f"{ticket.title}\n{ticket.description}".strip()
-    if knowledge_base is not None and ticket.tenant_id and query:
-        try:
-            similar_cases = knowledge_base.search(query, ticket.tenant_id, limit)
-        except Exception:
-            # Sem histórico a análise continua: o prompt já orienta o modelo a
-            # declarar que não encontrou casos semelhantes.
-            LOGGER.exception("Falha ao consultar a base de conhecimento.")
-    if max_distance is not None:
-        similar_cases = [
-            case
-            for case in similar_cases
-            if case.distance is None or case.distance <= max_distance
-        ]
-    return analyzer.analyze(ticket, similar_cases)
+    """Atalho para `run_analysis` quando só o resultado interessa."""
+    return run_analysis(ticket, knowledge_base, analyzer, limit, max_distance).result
 
 
 def _load_watermark(path: Path) -> str:

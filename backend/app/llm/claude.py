@@ -18,6 +18,8 @@ DEFAULT_MODEL = "claude-opus-5-5"
 class ClaudeAnalyzer:
     """`Analyzer` que chama o Claude com saída estruturada (JSON validado)."""
 
+    provider = "claude"
+
     def __init__(
         self,
         client: Any | None = None,

@@ -14,6 +14,9 @@ NO_HISTORY = "Não encontrei histórico semelhante no material recuperado do GLP
 
 
 class OfflineAnalyzer:
+    provider = "offline"
+    model = None
+
     def analyze(
         self, ticket: Ticket, similar_cases: Sequence[SimilarCase]
     ) -> AnalysisResult:

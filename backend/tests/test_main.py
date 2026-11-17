@@ -13,7 +13,9 @@ from app.main import (
     get_analyzer,
     get_knowledge_base,
     get_settings,
+    get_telemetry,
 )
+from app.telemetry.sqlite import SQLiteTelemetryStore
 
 client = TestClient(app)
 
@@ -62,6 +64,8 @@ def overrides(analyzer: RecordingAnalyzer, knowledge_base: FakeKnowledgeBase):
     app.dependency_overrides[get_settings] = lambda: Settings(api_token="")
     cache = AnalysisCache()
     app.dependency_overrides[get_analysis_cache] = lambda: cache
+    store = SQLiteTelemetryStore(":memory:")
+    app.dependency_overrides[get_telemetry] = lambda: store
     yield
     app.dependency_overrides.clear()
 
@@ -143,3 +147,72 @@ def test_analyze_reuses_cached_result_until_refresh(
 
     client.post("/analyze", json={**body, "description": "cai sempre"})
     assert len(analyzer.calls) == 3
+
+
+def _telemetry() -> SQLiteTelemetryStore:
+    return app.dependency_overrides[get_telemetry]()
+
+
+def test_analyze_returns_analysis_id_and_records_telemetry() -> None:
+    body = {"ticket_id": 7, "title": "Wi-Fi", "description": "cai", "tenant_id": 0}
+
+    first = client.post("/analyze", json=body).json()
+    second = client.post("/analyze", json=body).json()
+
+    assert first["analysis_id"] != second["analysis_id"]
+    rows = _telemetry().recent(10)
+    assert [row["cache_hit"] for row in rows] == [True, False]
+    assert rows[1]["cases_used"] == 1
+    assert rows[1]["confidence"] == 55
+    assert rows[1]["provider"] == "RecordingAnalyzer"
+
+
+def test_analyze_error_is_recorded() -> None:
+    class BrokenAnalyzer:
+        def analyze(self, ticket: Ticket, similar_cases: Any) -> AnalysisResult:
+            raise RuntimeError("boom")
+
+    app.dependency_overrides[get_analyzer] = lambda: BrokenAnalyzer()
+
+    client.post("/analyze", json={"ticket_id": 1, "title": "x"})
+
+    row = _telemetry().recent(1)[0]
+    assert (row["status"], row["error_type"]) == ("error", "RuntimeError")
+
+
+def test_feedback_is_stored_and_counted() -> None:
+    analysis = client.post("/analyze", json={"ticket_id": 3, "title": "VPN"}).json()
+
+    response = client.post(
+        "/feedback", json={"analysis_id": analysis["analysis_id"], "helpful": True}
+    )
+
+    assert response.status_code == 204
+    assert _telemetry().summary(7)["totals"]["helpful"] == 1
+    missing = client.post("/feedback", json={"analysis_id": "nope", "helpful": False})
+    assert missing.status_code == 404
+
+
+def test_admin_endpoints_are_disabled_without_admin_token() -> None:
+    assert client.get("/admin/metrics").status_code == 403
+
+
+def test_admin_endpoints_require_the_admin_token_not_the_api_token() -> None:
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        api_token="plugin", admin_token="admin"
+    )
+    client.post(
+        "/analyze",
+        json={"ticket_id": 1, "title": "x"},
+        headers={"Authorization": "Bearer plugin"},
+    )
+
+    assert client.get("/admin/metrics").status_code == 401
+    plugin = client.get("/admin/metrics", headers={"Authorization": "Bearer plugin"})
+    assert plugin.status_code == 401
+
+    admin = client.get("/admin/metrics", headers={"Authorization": "Bearer admin"})
+    assert admin.status_code == 200
+    assert admin.json()["totals"]["analyses"] == 1
+    recent = client.get("/admin/analyses", headers={"Authorization": "Bearer admin"})
+    assert recent.json()[0]["ticket_id"] == "1"

@@ -1,6 +1,6 @@
 <?php
 
-define('PLUGIN_RESOLVEAI_VERSION', '0.2.0');
+define('PLUGIN_RESOLVEAI_VERSION', '0.3.0');
 define('PLUGIN_RESOLVEAI_MIN_GLPI_VERSION', '10.0.0');
 define('PLUGIN_RESOLVEAI_MAX_GLPI_VERSION', '13.0.0');
 
@@ -18,6 +18,9 @@ function plugin_init_resolveai(): void
         $prefix = version_compare(GLPI_VERSION, '11.0.0', '>=') ? '' : 'public/';
         $PLUGIN_HOOKS['add_javascript']['resolveai'] = $prefix . 'js/resolveai.js';
         $PLUGIN_HOOKS['add_css']['resolveai'] = $prefix . 'css/resolveai.css';
+
+        // Ferramentas > Painel da IA (a classe só mostra o item para Super-Admin).
+        $PLUGIN_HOOKS['menu_toadd']['resolveai'] = ['tools' => 'PluginResolveaiDashboard'];
     }
 }
 

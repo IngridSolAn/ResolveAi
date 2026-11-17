@@ -28,6 +28,8 @@ services:
       - RESOLVEAI_API_URL=http://backend-ai:8000/analyze
       - RESOLVEAI_API_TOKEN=${RESOLVEAI_API_TOKEN:-}
       - RESOLVEAI_API_TIMEOUT=${RESOLVEAI_API_TIMEOUT:-300}
+      # Painel da IA (Ferramentas > Painel da IA, só Super-Admin)
+      - RESOLVEAI_ADMIN_TOKEN=${RESOLVEAI_ADMIN_TOKEN:-}
     volumes:
       - glpi_app_data:/var/www/html
       - ./glpi/plugins/resolveai:/var/www/html/glpi/plugins/resolveai
@@ -50,6 +52,9 @@ services:
       - CHROMADB_HOST=chromadb
       - CHROMADB_PORT=8000
       - RESOLVEAI_API_TOKEN=${RESOLVEAI_API_TOKEN:-}
+      # Token que o GLPI usa para ler a telemetria do Painel da IA (/admin/*)
+      - RESOLVEAI_ADMIN_TOKEN=${RESOLVEAI_ADMIN_TOKEN:-}
+      - TELEMETRY_DB_PATH=/app/data/telemetry.db
       # IA: ollama (gratuita, padrão) | claude (paga) | offline
       - RESOLVEAI_LLM=${RESOLVEAI_LLM:-ollama}
       - OLLAMA_HOST=http://ollama:11434
@@ -61,6 +66,8 @@ services:
     volumes:
       # Cache do modelo de embeddings do Chroma (~80 MB), baixado uma vez.
       - backend_cache:/root/.cache
+      # Telemetria do painel e estado da indexação (persistem entre rebuilds).
+      - backend_data:/app/data
     depends_on:
       - chromadb
       - ollama
@@ -102,6 +109,7 @@ volumes:
   chroma_data:
   ollama_data:
   backend_cache:
+  backend_data:
 
 networks:
   resolveai-net:

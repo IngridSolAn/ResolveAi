@@ -39,6 +39,12 @@ class Settings:
         default_factory=lambda: _env("CLAUDE_EFFORT", "medium")
     )
     api_token: str = field(default_factory=lambda: _env("RESOLVEAI_API_TOKEN"))
+    # Token do painel de administradores (separado do token do plugin). Sem
+    # ele, o painel fica desativado.
+    admin_token: str = field(default_factory=lambda: _env("RESOLVEAI_ADMIN_TOKEN"))
+    telemetry_db_path: str = field(
+        default_factory=lambda: _env("TELEMETRY_DB_PATH", "data/telemetry.db")
+    )
     rag_enabled: bool = field(
         default_factory=lambda: _env("RESOLVEAI_RAG_ENABLED", "true").lower()
         in {"1", "true", "yes"}

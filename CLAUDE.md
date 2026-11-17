@@ -30,6 +30,8 @@ docker compose up --build -d backend-ai             # após mudar código do bac
 
 Para indexar dentro do Docker: `docker exec -e GLPI_READONLY_DATABASE_URL="mysql+pymysql://<user>:<senha>@db:3306/glpi?charset=utf8mb4" resolveai-backend python -m app.index`.
 
+Página pública (GitHub Pages): `docs/index.html` + `docs/site.css`, HTML estático.
+
 Não há linter configurado. Os testes não chamam IA real, GLPI, ChromaDB nem Ollama (usam fakes, `httpx.MockTransport` e `app.dependency_overrides`).
 
 ## Arquitetura
@@ -49,6 +51,7 @@ Há dois códigos independentes:
 - `llm/`: `ollama.py` (padrão, gratuito), `claude.py` (pago, `client.beta.messages.parse` com saída estruturada Pydantic e `fallbacks="default"`) e `offline.py` (sem IA). Todos levantam `llm/errors.AnalysisError`.
 - `main.py`: só faz HTTP ↔ modelos neutros e injeção de dependências (`get_settings`, `get_analyzer`, `get_knowledge_base` com `lru_cache`; os testes as substituem). `build_analyzer` escolhe a IA por `RESOLVEAI_LLM` (`ollama` | `claude` | `offline`).
 - `config.py`: toda a configuração vem de variáveis de ambiente (ver `.env.example`).
+- Telemetria e painel: `/analyze` grava um `AnalysisEvent` (`core/telemetry.py`, SQLite em `telemetry/sqlite.py`) e devolve `analysis_id`; `/feedback` registra 👍/👎; `/admin/metrics` e `/admin/analyses` alimentam o Painel da IA, que fica **no plugin do GLPI** (Ferramentas → Painel da IA, só Super-Admin = `Session::haveRight('config', UPDATE)`): `front/painel.php` + `public/js/painel.js`/`public/css/painel.css` (CSS todo escopado em `.viz-root`; o tema escuro segue `html[data-glpi-theme-dark="1"]`), com dados via `front/admin.php`, que chama `/admin/*` servidor a servidor com `RESOLVEAI_ADMIN_TOKEN` (separado do token do plugin; sem ele, 403). O menu vem de `inc/dashboard.class.php` e fica em cache na sessão do GLPI: é preciso sair e entrar de novo para vê-lo. A telemetria guarda só IDs e números, nunca texto de chamado. `run_analysis` devolve `AnalysisOutcome` (resultado + casos recuperados/usados/citados), que também é o que o cache guarda.
 
 ### Invariantes importantes
 
@@ -59,7 +62,7 @@ Há dois códigos independentes:
 
 ### Plugin GLPI (`glpi/plugins/resolveai/`)
 
-PHP (GLPI 10 a 12). `public/js/resolveai.js` cria um assistente flutuante (robô SVG original) em todas as páginas da interface `central`; em `front/ticket.form.php?id=N` ele se expande e chama `front/insights.php`. Esse endpoint exige a interface `central`, verifica a permissão, lê o chamado e chama o backend servidor a servidor (`RESOLVEAI_API_URL`, `RESOLVEAI_API_TOKEN`, `RESOLVEAI_API_TIMEOUT`); `refresh=1` ignora o cache de análises do backend (`core/cache.py`, `ANALYSIS_CACHE_TTL_SECONDS`). O diretório é montado no container `glpi-app` pelo docker-compose, então mudanças no PHP valem sem reiniciar. O ambiente Docker roda GLPI 12: APIs do GLPI 10 como `Plugin::getWebDir()` não existem mais, então use `method_exists` com fallback; no JS, use `CFG_GLPI.root_doc`. Arquivos estáticos (JS, CSS, imagens) precisam ficar em `public/`; fora dela, o GLPI 11+ responde 404. Ao mudar `PLUGIN_RESOLVEAI_VERSION`, o GLPI desativa o plugin até ele ser atualizado: `docker exec -u www-data glpi-app php /var/www/html/glpi/bin/console plugin:install resolveai --username=glpi --force -n` e depois `plugin:activate resolveai -n`. Erros do plugin aparecem em `files/_log/php-errors.log`, dentro do container.
+PHP (GLPI 10 a 12). `public/js/resolveai.js` cria um assistente flutuante (robô SVG original) em todas as páginas da interface `central`; em `front/ticket.form.php?id=N` ele se expande e chama `front/insights.php`. Esse endpoint exige a interface `central`, verifica a permissão, lê o chamado e chama o backend servidor a servidor (`RESOLVEAI_API_URL`, `RESOLVEAI_API_TOKEN`, `RESOLVEAI_API_TIMEOUT`); `refresh=1` ignora o cache de análises do backend (`core/cache.py`, `ANALYSIS_CACHE_TTL_SECONDS`). O diretório é montado no container `glpi-app` pelo docker-compose, então mudanças no PHP valem sem reiniciar. O ambiente Docker roda GLPI 12: APIs do GLPI 10 como `Plugin::getWebDir()` não existem mais, então use `method_exists` com fallback; no JS, use `CFG_GLPI.root_doc`. Arquivos estáticos (JS, CSS, imagens) precisam ficar em `public/`; fora dela, o GLPI 11+ responde 404. Em classes do plugin que estendem classes do GLPI, não redeclare propriedades como `$rightname`: no GLPI 12 elas são tipadas (`static string`) e no GLPI 10 não, e qualquer diferença gera erro fatal em todas as páginas. `php -l` não detecta isso; teste com `php -r 'require "vendor/autoload.php"; require "plugins/resolveai/inc/<arquivo>.class.php";'` dentro do container. Ao mudar `PLUGIN_RESOLVEAI_VERSION`, o GLPI desativa o plugin até ele ser atualizado: `docker exec -u www-data glpi-app php /var/www/html/glpi/bin/console plugin:install resolveai --username=glpi --force -n` e depois `plugin:activate resolveai -n`. Erros do plugin aparecem em `files/_log/php-errors.log`, dentro do container.
 
 ## Observações de ambiente
 

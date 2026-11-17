@@ -13,14 +13,16 @@ import threading
 import time
 from collections import OrderedDict
 
-from app.core.models import AnalysisResult, Ticket
+from typing import Any
+
+from app.core.models import Ticket
 
 
 class AnalysisCache:
     def __init__(self, ttl_seconds: float = 86400, max_items: int = 256) -> None:
         self.ttl_seconds = ttl_seconds
         self.max_items = max_items
-        self._items: OrderedDict[str, tuple[float, AnalysisResult]] = OrderedDict()
+        self._items: OrderedDict[str, tuple[float, Any]] = OrderedDict()
         self._lock = threading.Lock()
 
     @staticmethod
@@ -30,7 +32,7 @@ class AnalysisCache:
         )
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    def get(self, key: str) -> AnalysisResult | None:
+    def get(self, key: str) -> Any | None:
         if self.ttl_seconds <= 0:
             return None
         with self._lock:
@@ -44,7 +46,7 @@ class AnalysisCache:
             self._items.move_to_end(key)
             return result
 
-    def set(self, key: str, result: AnalysisResult) -> None:
+    def set(self, key: str, result: Any) -> None:
         if self.ttl_seconds <= 0:
             return
         with self._lock:
