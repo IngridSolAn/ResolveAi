@@ -2,7 +2,7 @@
 
 **IA generativa a serviço do suporte de TI.** O ResolveAI lê o chamado que o analista acabou de abrir, encontra chamados parecidos que já foram resolvidos e sugere um diagnóstico, um nível de confiança e passos de teste, direto na tela do GLPI.
 
-🌐 **Entenda como a IA funciona, passo a passo:** [ingridsolan.github.io/ResolveAi]((https://ingridsolan.com.br/ResolveAi/ResolveAi-index.htm)/)
+🌐 **Entenda como a IA funciona, passo a passo:** [ingridsolan.github.io/ResolveAi]([(https://ingridsolan.com.br/ResolveAi/ResolveAi-index.htm)/)]
 
 ![Assistente ResolveAI expandido em um chamado do GLPI](docs/img/assistente-expandido.png)
 
